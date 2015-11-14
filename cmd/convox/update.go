@@ -37,6 +37,10 @@ func cmdUpdate(c *cli.Context) {
 	stdcli.Spinner.Prefix = "Updating: "
 	stdcli.Spinner.Start()
 
+	if Version == "dev" {
+		Version = "latest"
+	}
+
 	opts := equinox.Options{
 		CurrentVersion: Version,
 		Channel:        "stable",
