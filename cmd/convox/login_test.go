@@ -13,7 +13,7 @@ func TestInvalidLogin(t *testing.T) {
 	temp, _ := ioutil.TempDir("", "convox-test")
 
 	ts := testServer(t,
-		test.Http{Method: "GET", Path: "/apps", Code: 401, Response: "unauthorized"},
+		test.Http{Method: "GET", Path: "/auth", Code: 401, Response: "unauthorized"},
 	)
 
 	defer ts.Close()
@@ -38,6 +38,7 @@ func TestLogin(t *testing.T) {
 	temp, _ := ioutil.TempDir("", "convox-test")
 
 	ts := testServer(t,
+		test.Http{Method: "GET", Path: "/auth", Code: 200, Response: "{}"},
 		test.Http{Method: "GET", Path: "/apps", Code: 200, Response: client.Apps{}},
 	)
 
