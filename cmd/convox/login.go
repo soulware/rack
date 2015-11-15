@@ -385,8 +385,12 @@ func testLogin(host, password, version string) (message string, err error) {
 
 	message, err = cl.Auth()
 
+	// fallback to old login check
 	if err != nil {
-		return
+		if strings.Contains(err.Error(), "404") {
+			err = nil
+			_, err = cl.GetApps()
+		}
 	}
 
 	return
