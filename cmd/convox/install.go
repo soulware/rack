@@ -69,6 +69,7 @@ func init() {
 		Usage:       "[credentials.csv]",
 		Action:      cmdInstall,
 		Flags: []cli.Flag{
+			cfTemplateFlag,
 			cli.StringFlag{
 				Name:  "ami",
 				Value: "",
@@ -274,7 +275,7 @@ func cmdInstall(c *cli.Context) {
 		TemplateURL: aws.String(formationUrl),
 	}
 
-	if tf := os.Getenv("TEMPLATE_FILE"); tf != "" {
+	if tf := c.String("template"); tf != "" {
 		dat, err := ioutil.ReadFile(tf)
 
 		if err != nil {
