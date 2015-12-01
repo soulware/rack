@@ -166,7 +166,7 @@ func cmdInstall(c *cli.Context) {
 	if !lambdaRegions[region] {
 		stdcli.Error(fmt.Errorf("Convox is not currently supported in %s", region))
 	}
-	
+
 	tenancy := "default"
 	instanceType := c.String("instance-type")
 
@@ -230,57 +230,15 @@ func cmdInstall(c *cli.Context) {
 	key := c.String("key")
 
 	stackName := c.String("stack-name")
-	
+
 	vpcCidr := c.String("vpc-cidr")
-	
-	ip, ipnet, err := net.ParseCIDR(vpcCidr)
-	
+
+	subnetParams, err := calculateSubnets(vpcCidr)
+
 	if err != nil {
 		handleError("install", distinctId, err)
 		return
 	}
-	
-	ones, bits := ipnet.Mask.Size()
-	
-	// validate the cidr, must be between /16 and /26
-	// the min size of /26 instead of /28 is to allow for 3 evenly sized subnets
-	// /28 is too small due to aws vpc networking and elb IP reservations
-	// the largest allowed by AWS is /16
-	if ones > 27 || ones < 16 {
-      stdcli.Error(fmt.Errorf("VPC CIDR must be between /16 and /26", stackName))		
-	}
-	
-	// calculate 3 subnets that fit within this block
-	
-	// the total addresses in the VPC
-	numAddresses := int(math.Pow(2, float64(bits-ones)))
-	
-	// split into 4 even parts to keep things simple
-	ipPerSubnet := int(numAddresses / 4)
-	subnetOnes := ones + 2
-	
-	// counter to keep track of our subnet starting addresses
-	ipOffset := 0
-	
-	// the subnets that will be passed to cloudformation
-	subnets := [3]net.IP{}
-	subnetParams := [3]string{}
-	
-	for i := range subnets {
-	  subnets[i] = ip
-	
-	  //given the size constraints of the vpc, only the 3rd and 4th bits will be modified for each subnet
-	  thirdBit := ipOffset / 256
-	  fourthBit := ipOffset % 256
-	
-	  //create new subnets from the original ip, using our calulated values
-	  subnets[i][14] = byte(thirdBit)
-	  subnets[i][15] = byte(fourthBit)
-	
-	  //increment our offset for the next subnet	
-      ipOffset += ipPerSubnet
-	  subnetParams[i] = fmt.Sprintf("%s/%d", subnets[i].String(), subnetOnes)
-    }
 
 	versions, err := version.All()
 
@@ -812,4 +770,57 @@ func readCredentialsFromSTDIN() (creds *AwsCredentials, err error) {
 	}
 
 	return &input.Credentials, err
+}
+
+func calculateSubnets(vpcCidr string) (subnetParams []string, err error) {
+	ip, ipnet, err := net.ParseCIDR(vpcCidr)
+
+	if err != nil {
+		return nil, err
+	}
+
+	ones, bits := ipnet.Mask.Size()
+
+	// validate the cidr, must be between /16 and /26
+	// the min size of /26 instead of /28 is to allow for 3 evenly sized subnets
+	// /28 is too small due to aws vpc networking and elb IP reservations
+	// the largest allowed by AWS is /16
+	if ones > 27 || ones < 16 {
+		err = fmt.Errorf("VPC CIDR must be between /16 and /26")
+		return nil, err
+	}
+
+	// calculate 3 subnets that fit within this block
+
+	// the total addresses in the VPC
+	numAddresses := int(math.Pow(2, float64(bits-ones)))
+
+	// split into 4 even parts to keep things simple
+	ipPerSubnet := int(numAddresses / 4)
+	subnetOnes := ones + 2
+
+	// counter to keep track of our subnet starting addresses
+	ipOffset := 0
+
+	// the subnets that will be passed to cloudformation
+	subnets := [3]net.IP{}
+	subnetParams = make([]string, 3, 3)
+
+	for i := range subnets {
+		subnets[i] = ip
+
+		//given the size constraints of the vpc, only the 3rd and 4th bits will be modified for each subnet
+		thirdBit := ipOffset / 256
+		fourthBit := ipOffset % 256
+
+		//create new subnets from the original ip, using our calulated values
+		subnets[i][14] = byte(thirdBit)
+		subnets[i][15] = byte(fourthBit)
+
+		//increment our offset for the next subnet
+		ipOffset += ipPerSubnet
+		subnetParams[i] = fmt.Sprintf("%s/%d", subnets[i].String(), subnetOnes)
+	}
+
+	return subnetParams, err
 }
