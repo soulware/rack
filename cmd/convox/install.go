@@ -252,10 +252,6 @@ func cmdInstall(c *cli.Context) {
 
 	subnet2CIDR := c.String("subnet2-cidr")
 
-	if err != nil {
-		handleError("install", distinctId, err)
-		return
-	}
 
 	versions, err := version.All()
 
