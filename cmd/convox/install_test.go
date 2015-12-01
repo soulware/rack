@@ -6,7 +6,6 @@ import (
 
 	"github.com/convox/rack/Godeps/_workspace/src/github.com/aws/aws-sdk-go/aws/defaults"
 	"github.com/convox/rack/Godeps/_workspace/src/github.com/convox/release/version"
-	"github.com/convox/rack/Godeps/_workspace/src/github.com/stretchr/testify/assert"
 	"github.com/convox/rack/api/awsutil"
 	"github.com/convox/rack/test"
 )
@@ -45,46 +44,4 @@ func TestConvoxInstallSTDINCredentials(t *testing.T) {
 
 func TestConvoxInstallFileCredentials(t *testing.T) {
 
-}
-
-func TestConvoxInstallSubnetCalculation(t *testing.T) {
-	// test some invalid CIDRs
-	tooSmallCIDR := "10.0.0.0/28"
-	subnets, err := calculateSubnets(tooSmallCIDR)
-	assert.Equal(t, "VPC CIDR must be between /16 and /26", err.Error())
-	assert.Equal(t, []string(nil), subnets)
-
-	tooLargeCIDR := "10.0.0.0/8"
-	subnets, err = calculateSubnets(tooLargeCIDR)
-	assert.Equal(t, "VPC CIDR must be between /16 and /26", err.Error())
-	assert.Equal(t, []string(nil), subnets)
-
-	invalidCIDR := "10.0.0.0"
-	subnets, err = calculateSubnets(invalidCIDR)
-	assert.Equal(t, "invalid CIDR address: 10.0.0.0", err.Error())
-	assert.Equal(t, []string(nil), subnets)
-
-	// test some valid CIDRs
-
-	// largest valid CIDR
-	validCIDR16 := "10.0.0.0/16"
-	subnets, err = calculateSubnets(validCIDR16)
-	assert.Equal(t, nil, err)
-	assert.Equal(t, []string{"10.0.0.0/18", "10.0.64.0/18", "10.0.128.0/18"}, subnets)
-
-	// smallest valid CIDR
-	validCIDR27 := "10.0.0.0/27"
-	subnets, err = calculateSubnets(validCIDR27)
-	assert.Equal(t, nil, err)
-	assert.Equal(t, []string{"10.0.0.0/29", "10.0.0.8/29", "10.0.0.16/29"}, subnets)
-
-	validCIDR24 := "10.0.0.0/24"
-	subnets, err = calculateSubnets(validCIDR24)
-	assert.Equal(t, nil, err)
-	assert.Equal(t, []string{"10.0.0.0/26", "10.0.0.64/26", "10.0.0.128/26"}, subnets)
-
-	validCIDR17 := "10.0.0.0/17"
-	subnets, err = calculateSubnets(validCIDR17)
-	assert.Equal(t, nil, err)
-	assert.Equal(t, []string{"10.0.0.0/19", "10.0.32.0/19", "10.0.64.0/19"}, subnets)
 }
