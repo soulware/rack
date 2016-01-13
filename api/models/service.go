@@ -77,6 +77,8 @@ func (s *Service) Create() error {
 	switch s.Type {
 	case "papertrail":
 		req, err = s.CreatePapertrail()
+	case "syslog":
+		req, err = s.CreateSyslog()
 	case "webhook":
 		req, err = s.CreateWebhook()
 	default:

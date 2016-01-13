@@ -25,7 +25,7 @@ func LinkCreate(rw http.ResponseWriter, r *http.Request) *httperr.Error {
 		return httperr.Errorf(403, "can not link service with status: %s", s.Status)
 	}
 
-	if s.Type != "papertrail" {
+	if s.Type != "papertrail" && s.Type != "syslog" {
 		return httperr.Errorf(403, "linking is not yet implemented for service type: %s", s.Type)
 	}
 

@@ -1,0 +1,104 @@
+package models
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/convox/rack/Godeps/_workspace/src/github.com/aws/aws-sdk-go/aws"
+	"github.com/convox/rack/Godeps/_workspace/src/github.com/aws/aws-sdk-go/service/cloudformation"
+	"github.com/convox/rack/Godeps/_workspace/src/github.com/aws/aws-sdk-go/service/cloudwatchlogs"
+)
+
+func (s *Service) CreateSyslog() (*cloudformation.CreateStackInput, error) {
+	input := struct {
+		ARNs []string
+	}{
+		[]string{},
+	}
+
+	formation, err := buildTemplate(fmt.Sprintf("service/%s", s.Type), "service", input)
+
+	if err != nil {
+		return nil, err
+	}
+
+	req := &cloudformation.CreateStackInput{
+		Capabilities: []*string{aws.String("CAPABILITY_IAM")},
+		StackName:    aws.String(s.Name),
+		TemplateBody: aws.String(formation),
+	}
+
+	return req, nil
+}
+
+func (s *Service) LinkSyslog(app App) error {
+	// build map of app name -> arn of all linked services
+	arns := map[string]string{}
+
+	for k, v := range s.Outputs {
+		if strings.HasSuffix(k, "Link") {
+			n := DashName(k)
+			arns[n[:len(n)-5]] = v
+		}
+	}
+
+	// get full LogGroup ARN for app
+	req, err := CloudWatchLogs().DescribeLogGroups(&cloudwatchlogs.DescribeLogGroupsInput{
+		LogGroupNamePrefix: aws.String("foo"),
+	})
+
+	arn := *req.LogGroups[0].Arn
+
+	if err != nil {
+		return err
+	}
+
+	// append new ARN and update
+	arns[app.Name] = arn
+	return s.UpdateSyslog(arns)
+}
+
+func (s *Service) UnlinkSyslog(app App) error {
+	// build map of app name -> arn of all linked services
+	arns := map[string]string{}
+
+	for k, v := range s.Outputs {
+		if strings.HasSuffix(k, "Link") {
+			n := DashName(k)
+			arns[n[:len(n)-5]] = v
+		}
+	}
+
+	// delete existing ARN and update
+	delete(arns, app.Name)
+	return s.UpdatePapertrail(arns)
+}
+
+func (s *Service) UpdateSyslog(arns map[string]string) error {
+	input := struct {
+		ARNs map[string]string
+	}{
+		arns,
+	}
+
+	formation, err := buildTemplate(fmt.Sprintf("service/%s", s.Type), "service", input)
+
+	if err != nil {
+		return err
+	}
+
+	// Update stack with all linked ARNs and EventSourceMappings
+	_, err = CloudFormation().UpdateStack(&cloudformation.UpdateStackInput{
+		StackName:    aws.String(s.Name),
+		Capabilities: []*string{aws.String("CAPABILITY_IAM")},
+		Parameters: []*cloudformation.Parameter{
+			&cloudformation.Parameter{
+				ParameterKey:   aws.String("Url"),
+				ParameterValue: aws.String(s.Parameters["Url"]),
+			},
+		},
+		TemplateBody: aws.String(formation),
+	})
+
+	return err
+}
