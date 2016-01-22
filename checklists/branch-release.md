@@ -6,6 +6,7 @@
 
 - push your changes
 
+  `git pull`
   `git push`
 
 - create the release in slack

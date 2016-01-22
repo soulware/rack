@@ -7,6 +7,7 @@
 - confirm all changes are in master
 
   `git checkout master`
+  `git pull`
   `git show`
 
 - login to demo
