@@ -32,13 +32,14 @@
 
 - login to console and watch cloudformation
 
+  `open https://console.aws.amazon.com/`
+
+-  wait for "UPDATE_COMPLETE"
+
 Upgrading takes some time. Short upgrades include
 just starting new Rack processes and can take
 around 5 minutes. Rolling instances can take a lot longer.
 
-  `open https://console.aws.amazon.com/`
-
-  wait for "UPDATE_COMPLETE"
 
 - confirm upgrade
 
