@@ -500,7 +500,7 @@
       }
     },
     "Routes": {
-      "DependsOn": [ "Gateway", "GatewayAttachment", "Vpc" ],
+      "DependsOn": [ "Gateway", "GatewayAttachment", "Subnet0", "Subnet1", "Subnet2", "Vpc" ],
       "Type": "AWS::EC2::RouteTable",
       "Properties": {
         "VpcId": { "Ref": "Vpc" }
