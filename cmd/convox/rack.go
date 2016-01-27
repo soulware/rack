@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"sort"
 	"strings"
 
 	"github.com/convox/rack/Godeps/_workspace/src/github.com/codegangsta/cli"
@@ -134,32 +133,80 @@ func cmdRackScale(c *cli.Context) {
 }
 
 func cmdRackReleases(c *cli.Context) {
-	vs, err := version.All()
+	system, err := rackClient(c).GetSystem()
 
 	if err != nil {
+		stdcli.Error(err)
 		return
 	}
 
-	selected := version.Versions{}
+	fmt.Printf("%+v\n", system)
 
-	for _, v := range vs {
-		switch {
-		case !v.Published && c.Bool("unpublished"):
-			selected = append(selected, v)
-		case v.Published:
-			selected = append(selected, v)
+	releases, err := rackClient(c).GetSystemReleases()
+
+	if err != nil {
+		stdcli.Error(err)
+		return
+	}
+
+	version.Next(system.Version)
+
+	next, err := version.Next(system.Version)
+
+	if err != nil {
+		stdcli.Error(err)
+		return
+	}
+
+	t := stdcli.NewTable("ID", "CREATED", "STATUS")
+
+	requestedVersion := system.Version
+
+	if len(releases) > 0 && releases[0].Id != requestedVersion {
+		requestedVersion = releases[0].Id
+	}
+
+	// show next version if not currently on it or updating it
+	if next != system.Version && next != requestedVersion {
+		t.AddRow(next, "", "next")
+	}
+
+	for _, r := range releases {
+		status := ""
+
+		if r.Id == system.Version {
+			status = "active"
 		}
+
+		if r.Id != system.Version && r.Id == requestedVersion {
+			status = "updating"
+		}
+
+		t.AddRow(r.Id, humanizeTime(r.Created), status)
 	}
 
-	sort.Sort(sort.Reverse(selected))
+	t.Print()
 
-	if len(selected) > 20 {
-		selected = selected[0:20]
-	}
+	// selected := version.Versions{}
 
-	for _, v := range selected {
-		fmt.Println(v.Version)
-	}
+	// for _, v := range vs {
+	// 	switch {
+	// 	case !v.Published && c.Bool("unpublished"):
+	// 		selected = append(selected, v)
+	// 	case v.Published:
+	// 		selected = append(selected, v)
+	// 	}
+	// }
+
+	// sort.Sort(sort.Reverse(selected))
+
+	// if len(selected) > 20 {
+	// 	selected = selected[0:20]
+	// }
+
+	// for _, v := range selected {
+	// 	fmt.Println(v.Version)
+	// }
 }
 
 func latestVersion() (string, error) {

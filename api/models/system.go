@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/convox/rack/Godeps/_workspace/src/github.com/aws/aws-sdk-go/aws"
 	"github.com/convox/rack/Godeps/_workspace/src/github.com/aws/aws-sdk-go/service/cloudformation"
+	"github.com/convox/rack/Godeps/_workspace/src/github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/convox/rack/client"
 )
 
@@ -70,7 +72,43 @@ func (r *System) Save() error {
 
 	template := fmt.Sprintf("https://convox.s3.amazonaws.com/release/%s/formation.json", r.Version)
 
-	return app.UpdateParamsAndTemplate(params, template)
+	err = app.UpdateParamsAndTemplate(params, template)
+
+	if err != nil {
+		return err
+	}
+
+	// On version update, create an app release record
+	if app.Outputs["Release"] == r.Version {
+		return nil
+	}
+
+	release, err := app.LatestRelease()
+
+	if err != nil {
+		return err
+	}
+
+	if release == nil {
+		r := NewRelease(app.Name)
+		release = &r
+	}
+
+	release.Id = r.Version
+	release.Created = time.Now()
+
+	req := &dynamodb.PutItemInput{
+		Item: map[string]*dynamodb.AttributeValue{
+			"id":      &dynamodb.AttributeValue{S: aws.String(release.Id)},
+			"app":     &dynamodb.AttributeValue{S: aws.String(release.App)},
+			"created": &dynamodb.AttributeValue{S: aws.String(release.Created.Format(SortableTime))},
+		},
+		TableName: aws.String(releasesTable(release.App)),
+	}
+
+	_, err = DynamoDB().PutItem(req)
+
+	return err
 }
 
 func maxAppConcurrency() (int, error) {
